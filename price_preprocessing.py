@@ -80,4 +80,69 @@ X_test  = scaler.transform(test_df[final_features])
 y_train = train_df[target].values
 y_test  = test_df[target].values
 
-print(df_model.head())
+df_model
+
+import numpy as np
+
+# 1. Calculate delta_P_t+4 (future price difference: price 4 weeks ahead minus now)
+df_model['delta_p_t4'] = df_model['hrc_mum'].shift(-4) - df_model['hrc_mum']
+
+# 2. sigma_12w: trailing 12w volatility at each time (already computed as 'vol_12w')
+#   To avoid zero division, add a very small number (1e-8)
+df_model['target_IS_t4'] = np.sign(df_model['delta_p_t4']) * (
+    np.abs(df_model['delta_p_t4']) / (df_model['vol_12w'] + 1e-8)
+)
+
+# Optionally, drop any rows where you can't compute the target (near dataset end)
+df_model = df_model.dropna(subset=['target_IS_t4'])
+
+print(df_model[['date', 'hrc_mum', 'delta_p_t4', 'vol_12w', 'target_IS_t4']].head(10))
+
+# To view/check these features in your dataframe (df_model):
+print(df_model[['date', 'cum_4w_return', 'vol_4w', 'stable_count_4w', 'target_IS_t4']].head(10))
+
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(14, 7))
+
+# Plot target_IS_t4
+line1, = plt.plot(df_model['date'], df_model['target_IS_t4'], label='target_IS_t4', color='blue')
+
+# Plot hrc_mum price
+# Use a secondary y-axis for the price data as its scale is very different
+ax2 = plt.gca().twinx()
+line2, = ax2.plot(df_model['date'], df_model['hrc_mum'], label='hrc_mum Price', color='red')
+
+plt.title('target_IS_t4 and hrc_mum Price Over Time')
+plt.xlabel('Date')
+plt.ylabel('target_IS_t4', color='blue')
+ax2.set_ylabel('hrc_mum Price', color='red')
+
+# Add legends
+plt.legend(handles=[line1, line2], loc='upper left')
+
+plt.grid(True)
+plt.show()
+
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(14, 7))
+
+# Plot target_IS_t4
+line1, = plt.plot(df_model['date'], df_model['target_IS_t4'], label='target_IS_t4', color='blue')
+
+# Plot delta_p_t4
+# Use a secondary y-axis for delta_p_t4 as its scale might be different
+ax2 = plt.gca().twinx()
+line2, = ax2.plot(df_model['date'], df_model['delta_p_t4'], label='delta_p_t4', color='green')
+
+plt.title('target_IS_t4 and Price Change (delta_p_t4) Over Time')
+plt.xlabel('Date')
+plt.ylabel('target_IS_t4', color='blue')
+ax2.set_ylabel('delta_p_t4', color='green')
+
+# Add legends
+plt.legend(handles=[line1, line2], loc='upper left')
+
+plt.grid(True)
+plt.show()
